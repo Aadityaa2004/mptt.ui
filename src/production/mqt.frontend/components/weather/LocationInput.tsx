@@ -31,29 +31,26 @@ export function LocationInput({ onLocationSubmit, isLoading }: LocationInputProp
 
     setIsSearching(true);
     try {
-      // Using OpenStreetMap Nominatim API (free, no API key required)
+      // Use Next.js API route to proxy the request to Nominatim
+      // This avoids CORS issues and complies with Nominatim's usage policy
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=5`,
-        {
-          headers: {
-            "User-Agent": "MapleSense Weather App",
-          },
-        }
+        `/api/geocode?q=${encodeURIComponent(searchQuery)}&limit=5`
       );
 
       if (response.ok) {
         const data = await response.json();
-        setSuggestions(
-          data.map((item: { lat: string; lon: string; display_name: string }) => ({
-            lat: item.lat,
-            lon: item.lon,
-            display_name: item.display_name,
-          }))
-        );
+        setSuggestions(data);
         setShowSuggestions(true);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: "Failed to fetch locations" }));
+        console.error("Geocoding error:", errorData.error || response.statusText);
+        setSuggestions([]);
+        setShowSuggestions(false);
       }
     } catch (error) {
       console.error("Geocoding error:", error);
+      setSuggestions([]);
+      setShowSuggestions(false);
     } finally {
       setIsSearching(false);
     }
@@ -121,7 +118,7 @@ export function LocationInput({ onLocationSubmit, isLoading }: LocationInputProp
       </form>
 
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-10 w-full mt-2 bg-black/95 border border-white/10 rounded-lg shadow-lg backdrop-blur-md">
+        <div className="absolute z-50 w-full mt-2 bg-black/95 border border-white/10 rounded-lg shadow-lg backdrop-blur-md">
           {suggestions.map((suggestion, index) => (
             <button
               key={index}

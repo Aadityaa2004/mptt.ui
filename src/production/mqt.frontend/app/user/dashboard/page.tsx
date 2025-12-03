@@ -5,6 +5,8 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import Navbar from "@/components/navbar/Navbar";
 import { LocationInput } from "@/components/weather/LocationInput";
 import { CurrentWeather } from "@/components/weather/CurrentWeather";
+import { usePiPreferences } from "@/hooks/usePiPreferences";
+import { tailwindToHex } from "@/lib/colorUtils";
 import dynamic from "next/dynamic";
 
 const DeviceMap = dynamic(
@@ -43,6 +45,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 
 export default function UserDashboardPage() {
   const { user, isLoading } = useRequireAuth("user");
+  const { getPreference } = usePiPreferences();
   const [hasLocation, setHasLocation] = useState<boolean | null>(null);
   const [isCheckingLocation, setIsCheckingLocation] = useState(true);
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
@@ -177,6 +180,10 @@ export default function UserDashboardPage() {
         deviceLocationService.convertToDevice(location, location.device_id)
       );
       setDevices(convertedDevices);
+      
+      // Load colors from backend after devices are loaded
+      // This will sync colors from device locations to PI preferences
+      // Note: This is handled by the DeviceMap component's usePiPreferences hook
     } catch (err) {
       console.error("Error loading devices:", err);
       const errorMessage = err instanceof Error ? err.message : "Failed to load devices";
@@ -243,11 +250,19 @@ export default function UserDashboardPage() {
   const handleDeviceAdd = async (deviceData: Omit<Device, "id" | "createdAt" | "updatedAt">) => {
     try {
       setError(null);
+      // Get the gradient preference for this PI (with default fallback)
+      const piPreference = getPreference(deviceData.pi_id);
+      // Extract primary color from gradient for backend storage
+      const gradientMatch = piPreference?.gradient?.match(/from-([a-z]+-\d+)/);
+      const primaryColor = gradientMatch ? gradientMatch[1] : "orange-500";
+      const hexColor = tailwindToHex(primaryColor);
+      
       const location = await deviceLocationService.addLocation({
         device_id: deviceData.device_id,
         pi_id: deviceData.pi_id,
         latitude: deviceData.latitude,
         longitude: deviceData.longitude,
+        color: hexColor, // Store primary color from gradient
       });
       // Reload all devices to ensure consistency
       await loadDevices();

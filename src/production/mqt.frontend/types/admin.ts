@@ -18,7 +18,7 @@ export interface Pi {
 }
 
 export interface Device {
-  device_id: number;
+  device_id: number | string; // Can be numeric ID or MAC address string (e.g., "AA:BB:CC:DD:EE:FF")
   pi_id: string;
   created_at: string;
   updated_at?: string;
@@ -39,7 +39,7 @@ export interface SensorData {
 
 export interface Reading {
   ts: string;
-  device_id: number;
+  device_id: number | string; // Can be numeric ID or MAC address string
   pi_id: string;
   payload: {
     sensors: SensorData;

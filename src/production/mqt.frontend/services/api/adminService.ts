@@ -153,9 +153,12 @@ export const adminService = {
       throw new Error("Device ID is required");
     }
     
-    // Send device_id as-is (can be string for MAC addresses or number)
+    // Always send device_id as a string (backend Go API expects string type)
+    // Convert to string if it's a number (e.g., 123 -> "123")
+    const deviceIdString = String(deviceData.device_id);
+    
     const requestBody: Record<string, unknown> = {
-      device_id: deviceData.device_id,
+      device_id: deviceIdString,
     };
     
     const response = await apiFetch(`/pis/${piId}/devices`, {
@@ -182,8 +185,10 @@ export const adminService = {
     return response.json();
   },
 
-  async getDevice(piId: string, deviceId: number): Promise<Device> {
-    const response = await apiFetch(`/pis/${piId}/devices/${deviceId}`);
+  async getDevice(piId: string, deviceId: number | string): Promise<Device> {
+    // URL encode deviceId to handle MAC addresses with colons
+    const encodedDeviceId = encodeURIComponent(String(deviceId));
+    const response = await apiFetch(`/pis/${piId}/devices/${encodedDeviceId}`);
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: "Failed to fetch device" }));
       throw new Error(error.error || "Failed to fetch device");
@@ -193,12 +198,14 @@ export const adminService = {
 
   async updateDevice(
     piId: string,
-    deviceId: number,
+    deviceId: number | string,
     updates: UpdateDeviceRequest
   ): Promise<Device> {
     // Device updates not currently supported by backend
     const requestBody: Record<string, unknown> = {};
-    const response = await apiFetch(`/pis/${piId}/devices/${deviceId}`, {
+    // URL encode deviceId to handle MAC addresses with colons
+    const encodedDeviceId = encodeURIComponent(String(deviceId));
+    const response = await apiFetch(`/pis/${piId}/devices/${encodedDeviceId}`, {
       method: "PATCH",
       body: JSON.stringify(requestBody),
     });
@@ -209,14 +216,30 @@ export const adminService = {
     return response.json();
   },
 
-  async deleteDevice(piId: string, deviceId: number, cascade = false): Promise<{ deleted: boolean }> {
+  async deleteDevice(piId: string, deviceId: number | string, cascade = false): Promise<{ deleted: boolean }> {
     const params = cascade ? "?cascade=true" : "";
-    const response = await apiFetch(`/pis/${piId}/devices/${deviceId}${params}`, {
+    // URL encode deviceId to handle MAC addresses with colons
+    const encodedDeviceId = encodeURIComponent(String(deviceId));
+    const url = `/pis/${piId}/devices/${encodedDeviceId}${params}`;
+    const response = await apiFetch(url, {
       method: "DELETE",
     });
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Failed to delete device" }));
-      throw new Error(error.error || "Failed to delete device");
+      let errorMessage = "Failed to delete device";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch {
+        // If response is not JSON, try to get status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      console.error(`Delete device failed: ${url}`, {
+        status: response.status,
+        statusText: response.statusText,
+        deviceId,
+        encodedDeviceId,
+      });
+      throw new Error(errorMessage);
     }
     return response.json();
   },
@@ -246,7 +269,7 @@ export const adminService = {
 
   async getDeviceReadings(
     piId: string,
-    deviceId: number,
+    deviceId: number | string,
     params?: GetDeviceReadingsParams
   ): Promise<PaginatedResponse<Reading>> {
     const queryParams = new URLSearchParams();
@@ -255,7 +278,9 @@ export const adminService = {
         if (value !== undefined) queryParams.append(key, value.toString());
       });
     }
-    const url = `/readings/pis/${piId}/devices/${deviceId}${queryParams.toString() ? `?${queryParams}` : ""}`;
+    // URL encode deviceId to handle MAC addresses with colons
+    const encodedDeviceId = encodeURIComponent(String(deviceId));
+    const url = `/readings/pis/${piId}/devices/${encodedDeviceId}${queryParams.toString() ? `?${queryParams}` : ""}`;
     const response = await apiFetch(url);
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: "Failed to fetch device readings" }));
@@ -279,6 +304,74 @@ export const adminService = {
       throw new Error(error.error || "Failed to fetch statistics");
     }
     return response.json();
+  },
+
+  // Health Checks
+  async getIngestorHealth(): Promise<{
+    status: string;
+    timestamp: string;
+    services: {
+      mqtt: string;
+      api_service: string;
+    };
+    circuit_breaker: {
+      state: string;
+      failure_count: number;
+    };
+  } | null> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch("http://localhost:9003/health", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        return null;
+      }
+      return response.json();
+    } catch (error) {
+      // Handle network errors, CORS errors, timeouts, etc.
+      console.error("Ingestor health check failed:", error);
+      return null;
+    }
+  },
+
+  async getApiHealth(): Promise<{
+    db: boolean;
+    mqtt: boolean;
+    status: string;
+  } | null> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch("http://localhost:9002/health/ready", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        return null;
+      }
+      return response.json();
+    } catch (error) {
+      // Handle network errors, CORS errors, timeouts, etc.
+      console.error("API health check failed:", error);
+      return null;
+    }
   },
 };
 

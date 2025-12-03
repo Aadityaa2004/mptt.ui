@@ -8,7 +8,7 @@ import { sensorService } from "@/services/api/sensorService";
 import { ReadingsTable } from "@/components/sensors/ReadingsTable";
 import { ReadingsChart } from "@/components/sensors/ReadingsChart";
 import type { Reading } from "@/types/admin";
-import { Loader2, AlertCircle, ArrowLeft, Thermometer, Droplets, Battery, Copy, Check } from "lucide-react";
+import { Loader2, AlertCircle, ArrowLeft, Thermometer, Droplets, Battery, Copy, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SensorAnalyticsPage() {
@@ -28,6 +28,7 @@ export default function SensorAnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [timeRange, setTimeRange] = useState<"1h" | "1d" | "1w" | "1m" | "1y">("1d");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (!isLoading && user && deviceId) {
@@ -208,6 +209,27 @@ export default function SensorAnalyticsPage() {
     }
   };
 
+  const refreshSensorData = async () => {
+    if (!piId || !deviceId || isRefreshing) return;
+
+    try {
+      setIsRefreshing(true);
+      setError(null);
+      
+      // Refresh both latest reading and readings for stats
+      await Promise.all([
+        loadLatestReading(),
+        loadReadingsForStats()
+      ]);
+    } catch (err) {
+      console.error("Error refreshing sensor data:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to refresh sensor data";
+      setError(errorMessage);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -230,12 +252,12 @@ export default function SensorAnalyticsPage() {
             <Button
               variant="ghost"
               onClick={() => router.push("/user/sensors")}
-              className="mb-4 text-white bg-orange-500/80 hover:bg-orange-500/70 hover:text-white"
+              className="mb-5 text-black bg-white/80 hover:bg-white/70 hover:text-black"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Sensors
             </Button>
-            <h1 className="text-4xl font-light tracking-tight mb-2">
+            <h1 className="text-4xl font-light tracking-tight mb-2 text-white">
               Sensor Analytics
             </h1>
             <div className="flex items-center gap-2">
@@ -278,7 +300,19 @@ export default function SensorAnalyticsPage() {
           {/* Latest Reading Card */}
           {latestReading && (
             <div className="mb-6 border border-white/10 rounded-lg p-6 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm">
-              <h2 className="text-xl font-light mb-4">Current Reading</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-light">Current Reading</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={refreshSensorData}
+                  disabled={isRefreshing}
+                  className="h-8 w-8 text-orange-400 hover:text-orange-500 hover:bg-orange-500/10 disabled:opacity-50 border border-orange-400/90 border-2"
+                  title="Refresh sensor data"
+                > 
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {latestReading.payload.sensors.temperature && (
                   <div className="border border-white/10 rounded-lg p-4 bg-white/5">

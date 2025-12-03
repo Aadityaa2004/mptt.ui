@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Map, { Marker, Popup } from "react-map-gl/maplibre";
 import type { MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Plus, X, MapPin, Navigation, Crosshair, Search } from "lucide-react";
+import { Plus, X, MapPin, Navigation, Crosshair, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Device } from "@/types/device";
 import type { Pi, PiDevice } from "@/services/api/sensorService";
+import { usePiPreferences } from "@/hooks/usePiPreferences";
+import { MarkerShapeComponent } from "./MarkerShape";
 
 interface DeviceMapProps {
   devices: Device[];
@@ -23,6 +25,7 @@ interface DeviceMapProps {
 }
 
 export function DeviceMap({ devices, onDeviceAdd, onDeviceClick, center = [40.7128, -74.006], availablePis = [], availableDevices = [], selectedDeviceId = null, onCenterDevice, carousel }: DeviceMapProps) {
+  const { getPreference, initializePreferences, loadColorsFromBackend } = usePiPreferences();
   const [isAddingDevice, setIsAddingDevice] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newDevice, setNewDevice] = useState({
@@ -39,6 +42,21 @@ export function DeviceMap({ devices, onDeviceAdd, onDeviceClick, center = [40.71
       (device) => device.pi_id === newDevice.pi_id
     );
   }, [availableDevices, newDevice.pi_id]);
+
+  // Create a stable key from PI IDs for dependency tracking
+  const piIdsKey = useMemo(() => {
+    return availablePis.map(pi => pi.pi_id).sort().join(',');
+  }, [availablePis]);
+
+  // Initialize preferences for available PIs when they're loaded
+  useEffect(() => {
+    if (availablePis.length > 0) {
+      initializePreferences(availablePis.map(pi => pi.pi_id));
+      // Load colors from backend device locations
+      loadColorsFromBackend();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [piIdsKey]); // Only re-run when PI IDs actually change
   const [tempMarker, setTempMarker] = useState<[number, number] | null>(null);
   const [mounted, setMounted] = useState(false);
   const [viewState, setViewState] = useState({
@@ -51,6 +69,7 @@ export function DeviceMap({ devices, onDeviceAdd, onDeviceClick, center = [40.71
   const [centerInput, setCenterInput] = useState({ lat: "", lng: "" });
   const [mapError, setMapError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const mapRef = useRef<MapRef>(null);
 
   useEffect(() => {
@@ -100,6 +119,7 @@ export function DeviceMap({ devices, onDeviceAdd, onDeviceClick, center = [40.71
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        setCurrentLocation({ lat: latitude, lng: longitude });
         centerMap(latitude, longitude);
       },
       (error: GeolocationPositionError) => {
@@ -291,8 +311,11 @@ export function DeviceMap({ devices, onDeviceAdd, onDeviceClick, center = [40.71
         cursor={isAddingDevice ? "crosshair" : "default"}
       >
         {/* Existing device markers */}
-        {devices.map((device) => {
+        {devices.map((device, index) => {
           const isSelected = device.id === selectedDeviceId;
+          const preference = getPreference(device.pi_id, index);
+          const markerSize = isSelected ? "lg" : "md";
+          
           return (
             <Marker
               key={device.id}
@@ -305,13 +328,28 @@ export function DeviceMap({ devices, onDeviceAdd, onDeviceClick, center = [40.71
               }}
             >
               <div className="cursor-pointer">
-                <div className={`${isSelected ? 'w-8 h-8' : 'w-6 h-6'} bg-gradient-to-br ${isSelected ? 'from-orange-400 to-orange-500' : 'from-orange-500 to-orange-600'} rounded-full border-2 ${isSelected ? 'border-orange-300' : 'border-white'} shadow-lg ${isSelected ? 'shadow-orange-400/70' : 'shadow-orange-500/50'} flex items-center justify-center hover:scale-110 transition-all ${isSelected ? 'animate-pulse' : ''}`}>
-                  <div className={`${isSelected ? 'w-3 h-3' : 'w-2 h-2'} bg-white rounded-full`} />
-                </div>
+                <MarkerShapeComponent
+                  gradient={preference.gradient}
+                  size={markerSize}
+                  isSelected={isSelected}
+                />
               </div>
             </Marker>
           );
         })}
+
+        {/* Current location marker (blue human icon) */}
+        {currentLocation && (
+          <Marker
+            longitude={currentLocation.lng}
+            latitude={currentLocation.lat}
+            anchor="bottom"
+          >
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full border-2 border-blue-300 shadow-lg shadow-blue-400/70 flex items-center justify-center">
+              <User className="w-5 h-5 text-white" strokeWidth={2} />
+            </div>
+          </Marker>
+        )}
 
         {/* Temporary marker for new device placement */}
         {tempMarker && (

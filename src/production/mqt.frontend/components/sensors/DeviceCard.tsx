@@ -41,11 +41,6 @@ export function DeviceCard({ device }: DeviceCardProps) {
     router.push(`/user/sensors/${device.device_id}?pi_id=${encodeURIComponent(device.pi_id)}`);
   };
 
-  const formatDeviceId = (id: string) => {
-    // Format device ID with colons for better readability
-    return id.match(/.{1,2}/g)?.join(":") || id;
-  };
-
   return (
     <button
       onClick={handleClick}
@@ -55,7 +50,7 @@ export function DeviceCard({ device }: DeviceCardProps) {
       <div className="mb-4">
         <h3 className="text-lg font-light mb-1">Device</h3>
         <p className="text-white/60 font-light text-sm font-mono tracking-wider">
-          {formatDeviceId(device.device_id)}
+          {device.device_id}
         </p>
       </div>
 

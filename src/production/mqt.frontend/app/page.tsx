@@ -123,7 +123,7 @@ export default function Home() {
           </div>
 
           {/* Problem Statement Section */}
-          <section className="mb-20 max-w-4xl mx-auto relative z-30">
+          <section className="my-48 max-w-4xl mx-auto relative z-30">
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-light mb-4">The Challenge</h2>
               <p className="text-lg text-white/70 font-light max-w-2xl mx-auto">
@@ -147,7 +147,7 @@ export default function Home() {
           </section>
 
           {/* How It Works Section */}
-          <section className="mb-20 max-w-6xl mx-auto relative z-30">
+          <section className="mb-20 mt-48 max-w-6xl mx-auto relative z-30">
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-light mb-4">How MapleSense Works</h2>
               <p className="text-lg text-white/70 font-light max-w-2xl mx-auto">
@@ -156,7 +156,7 @@ export default function Home() {
             </div>
 
             {/* Architecture Diagram */}
-            <div className="mb-16 p-6 sm:p-8 rounded-lg border border-white/10 bg-black/40 backdrop-blur-sm shadow-xl shadow-orange-500/20">
+            <div className="mb-48 p-6 sm:p-8 rounded-lg border border-white/10 bg-black/40 backdrop-blur-sm ">
               <div className="text-center mb-8">
                 <h3 className="text-xl font-light mb-2">How Your Data Flows</h3>
                 <p className="text-sm text-white/50">From your buckets to your dashboard</p>
@@ -165,7 +165,7 @@ export default function Home() {
               {/* Simplified Flow */}
               <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8">
                 {/* Sensors */}
-                <div className="flex-1 max-w-[280px] p-5 rounded-lg border border-white/20 bg-black/20 shadow-xl shadow-orange-500/20">
+                <div className="flex-1 max-w-[280px] p-5 rounded-lg border border-white/20 bg-black/20 ">
                   <div className="text-center mb-4">
                     <h4 className="text-base font-light text-white/80 mb-2">Your Buckets</h4>
                   </div>
@@ -195,7 +195,7 @@ export default function Home() {
                 </div>
 
                 {/* Controller */}
-                <div className="flex-1 max-w-[280px] p-5 rounded-lg border border-white/20 bg-black/20 shadow-xl shadow-orange-500/20">
+                <div className="flex-1 max-w-[280px] p-5 rounded-lg border border-white/20 bg-black/20 ">
                   <div className="text-center mb-4">
                     <h4 className="text-base font-light text-white/80 mb-2">Controller</h4>
                   </div>
@@ -221,7 +221,7 @@ export default function Home() {
                 </div>
 
                 {/* Cloud */}
-                <div className="flex-1 max-w-[280px] p-5 rounded-lg border border-white/20 bg-black/20 shadow-xl shadow-orange-500/20">
+                <div className="flex-1 max-w-[280px] p-5 rounded-lg border border-white/20 bg-black/20 ">
                   <div className="text-center mb-4">
                     <h4 className="text-base font-light text-white/80 mb-2">Cloud Processing</h4>
                   </div>
@@ -251,7 +251,7 @@ export default function Home() {
                 </div>
 
                 {/* Dashboard */}
-                <div className="flex-1 max-w-[280px] p-5 rounded-lg border border-white/20 bg-black/20 shadow-xl shadow-orange-500/20">
+                <div className="flex-1 max-w-[280px] p-5 rounded-lg border border-white/20 bg-black/20 ">
                   <div className="text-center mb-4">
                     <h4 className="text-base font-light text-white/80 mb-2">Your Dashboard</h4>
                   </div>
@@ -441,7 +441,7 @@ export default function Home() {
             {/* Team Credits */}
             <div className="flex items-center gap-6 flex-wrap justify-center">
               <div className="text-xs text-white/40 font-light">
-                Built by: Kelsey Erb, CompE, William Neel, CompE, Aadityaa R. Sethuraman, CompE, Vansh Singh, CompE, and Keshav Verma, CompE
+                Built by: Kelsey Erb, CompE, William Neel, CompE, Aadityaa Rengaraj Sethuraman, CompE, Vansh Singh, CompE, and Keshav Verma, CompE
               </div>
             </div>
           </div>

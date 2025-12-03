@@ -101,11 +101,6 @@ export function DeviceCarousel({ devices, currentIndex, onClose, onNavigate, onD
     }
   };
 
-  const formatDeviceId = (id: string) => {
-    // Format device ID with colons for better readability
-    return id.match(/.{1,2}/g)?.join(":") || id;
-  };
-
   if (!currentDevice) return null;
 
   return (
@@ -124,7 +119,7 @@ export function DeviceCarousel({ devices, currentIndex, onClose, onNavigate, onD
           <div className="mb-4">
             <h2 className="text-xl font-light mb-1">Device</h2>
             <p className="text-white/60 font-light text-xs font-mono tracking-wider mb-2">
-              {formatDeviceId(currentDevice.device_id)}
+              {currentDevice.device_id}
             </p>
             <p className="text-xs text-white/40 font-light">Pi ID: {currentDevice.pi_id}</p>
           </div>

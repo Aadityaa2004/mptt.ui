@@ -32,6 +32,7 @@ export interface Device {
   name?: string;
   latitude: number;
   longitude: number;
+  color?: string; // Hex color code from backend
   lastReading?: MQTTPayload;
   createdAt: string;
   updatedAt: string;

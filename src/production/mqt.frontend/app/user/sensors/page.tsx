@@ -104,9 +104,9 @@ export default function MySensorsPage() {
             <h1 className="text-4xl font-light tracking-tight mb-2">
               My Sensors
             </h1>
-            <p className="text-white/60 font-light text-sm">
+            {/* <p className="text-white/60 font-light text-sm">
               View and manage your sensor devices
-            </p>
+            </p> */}
           </div>
 
           {/* Summary Statistics */}

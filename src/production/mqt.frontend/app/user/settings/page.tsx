@@ -5,22 +5,92 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import Navbar from "@/components/navbar/Navbar";
 import { LocationInput } from "@/components/weather/LocationInput";
 import { weatherService } from "@/services/api/weatherService";
+import { sensorService, type Pi } from "@/services/api/sensorService";
+import { usePiPreferences } from "@/hooks/usePiPreferences";
+import { MarkerShapeComponent } from "@/components/map/MarkerShape";
+import { tailwindToHex, hexToTailwind } from "@/lib/colorUtils";
 import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
+
+const AVAILABLE_COLORS = [
+  "orange-500",
+  "blue-500",
+  "green-500",
+  "purple-500",
+  "red-500",
+  "yellow-500",
+  "pink-500",
+  "cyan-500",
+  "indigo-500",
+  "teal-500",
+  "emerald-500",
+  "rose-500",
+  "amber-500",
+  "violet-500",
+  "sky-500",
+];
+
+// Predefined gradient combinations (no blue colors - blue is reserved for current location)
+const PREDEFINED_GRADIENTS = [
+  { gradient: "from-orange-500 to-red-500" },
+  { gradient: "from-green-500 to-emerald-500" },
+  { gradient: "from-purple-500 to-pink-500" },
+  { gradient: "from-red-500 to-orange-500" },
+  { gradient: "from-yellow-500 to-orange-500" },
+  { gradient: "from-pink-500 to-rose-500" },
+  { gradient: "from-indigo-500 to-purple-500" },
+  { gradient: "from-teal-500 to-cyan-500" },
+  { gradient: "from-violet-500 to-purple-500" },
+  { gradient: "from-emerald-500 to-green-500" },
+  { gradient: "from-rose-500 to-pink-500" },
+  { gradient: "from-amber-500 to-yellow-500" },
+];
 
 export default function SettingsPage() {
   const { user, isLoading } = useRequireAuth("user");
+  const { preferences, getPreference, updatePreference, initializePreferences, loadColorsFromBackend, isLoadingFromBackend } = usePiPreferences();
   const [hasLocation, setHasLocation] = useState<boolean | null>(null);
   const [isCheckingLocation, setIsCheckingLocation] = useState(true);
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [locationName, setLocationName] = useState<string>("");
+  const [pis, setPis] = useState<Pi[]>([]);
+  const [isLoadingPis, setIsLoadingPis] = useState(false);
+  const [openColorPickers, setOpenColorPickers] = useState<Record<string, boolean>>({});
+  const [customColors, setCustomColors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isLoading && user) {
       checkLocation();
+      loadPis();
     }
   }, [isLoading, user]);
+
+  const loadPis = async () => {
+    if (!user?.user_id) return;
+
+    try {
+      setIsLoadingPis(true);
+      const pisResponse = await sensorService.getPis({
+        user_id: user.user_id,
+        page: 1,
+        page_size: 100,
+      });
+      const loadedPis = Array.isArray(pisResponse?.items) ? pisResponse.items : [];
+      setPis(loadedPis);
+      
+      // Initialize preferences for all PIs
+      if (loadedPis.length > 0) {
+        initializePreferences(loadedPis.map(pi => pi.pi_id));
+        // Load colors from backend device locations
+        await loadColorsFromBackend();
+      }
+    } catch (err) {
+      console.error("Error loading PIs:", err);
+    } finally {
+      setIsLoadingPis(false);
+    }
+  };
 
   const checkLocation = async () => {
     try {
@@ -100,7 +170,7 @@ export default function SettingsPage() {
           )}
 
           {/* Location Settings */}
-          <div className="border border-white/10 rounded-lg p-8 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm">
+          <div className="relative z-10 border border-white/10 rounded-lg p-8 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm mb-6">
             <h2 className="text-2xl font-light mb-4">Location Settings</h2>
             <p className="text-white/60 font-light text-sm mb-6">
               {hasLocation
@@ -111,6 +181,180 @@ export default function SettingsPage() {
               onLocationSubmit={handleLocationSubmit}
               isLoading={isUpdatingLocation}
             />
+          </div>
+
+          {/* PI Marker Settings */}
+          <div className="border border-white/10 rounded-lg p-8 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm">
+            <h2 className="text-2xl font-light mb-4">Map Marker Settings</h2>
+            <p className="text-white/60 font-light text-sm mb-6">
+              Customize the gradient colors of markers for each Raspberry Pi unit on the map. This helps you visually group and identify your devices.
+            </p>
+
+            {isLoadingPis ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 text-white/60 animate-spin" />
+              </div>
+            ) : pis.length === 0 ? (
+              <p className="text-white/60 font-light text-sm text-center py-8">
+                No Raspberry Pi units found. Add devices to your account to configure marker settings.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {pis.map((pi, index) => {
+                  const preference = getPreference(pi.pi_id, index);
+                  return (
+                    <div
+                      key={pi.pi_id}
+                      className="flex items-center gap-4 p-4 border border-white/10 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                    >
+                      {/* PI Name */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-base font-light">
+                          <span className="text-white/60">PI:</span>{" "}
+                          <span className="text-white/90 font-mono">{pi.pi_id}</span>
+                        </h3>
+                      </div>
+
+                      {/* Current Gradient Preview */}
+                      <div className="flex items-center gap-2">
+                        <MarkerShapeComponent
+                          gradient={preference.gradient}
+                          size="sm"
+                        />
+                      </div>
+
+                      {/* Custom Color Picker */}
+                      <div className="flex-shrink-0 relative">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenColorPickers(prev => ({ ...prev, [pi.pi_id]: !prev[pi.pi_id] }));
+                            // Initialize custom color from current gradient if not set
+                            if (!customColors[pi.pi_id]) {
+                              // Check for custom hex colors first: from-[#f97316]
+                              const hexFromMatch = preference.gradient.match(/from-\[#([0-9A-Fa-f]{6})\]/);
+                              
+                              let colorHex = "#f97316";
+                              
+                              if (hexFromMatch) {
+                                colorHex = `#${hexFromMatch[1]}`;
+                              } else {
+                                // Try Tailwind class
+                                const fromMatch = preference.gradient.match(/from-([a-z]+-\d+)/);
+                                if (fromMatch) {
+                                  colorHex = tailwindToHex(fromMatch[1]);
+                                }
+                              }
+                              
+                              setCustomColors(prev => ({
+                                ...prev,
+                                [pi.pi_id]: colorHex,
+                              }));
+                            }
+                          }}
+                          disabled={isLoadingFromBackend}
+                          className="flex h-10 items-center justify-center rounded-md border border-white/10 bg-white/5 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-white/10 transition-colors"
+                          title="Customize gradient colors"
+                        >
+                          <svg className="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                          </svg>
+                        </button>
+                        
+                        {/* Color Picker Panel */}
+                        {openColorPickers[pi.pi_id] && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={() => setOpenColorPickers(prev => ({ ...prev, [pi.pi_id]: false }))}
+                            />
+                            <div className="absolute z-20 mt-2 right-0 bg-black/95 border border-white/10 rounded-lg shadow-lg backdrop-blur-md p-4 min-w-[240px]">
+                              <h4 className="text-sm font-light mb-3 text-white">Marker Color</h4>
+                              
+                              {/* Color Picker */}
+                              <div className="mb-4">
+                                <label className="text-xs text-white/60 font-light mb-2 block">Color</label>
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="color"
+                                    value={customColors[pi.pi_id] || "#f97316"}
+                                    onChange={(e) => {
+                                      setCustomColors(prev => ({
+                                        ...prev,
+                                        [pi.pi_id]: e.target.value,
+                                      }));
+                                    }}
+                                    className="w-12 h-10 rounded border border-white/10 cursor-pointer"
+                                  />
+                                  <div className="flex-1">
+                                    <input
+                                      type="text"
+                                      value={customColors[pi.pi_id] || "#f97316"}
+                                      onChange={(e) => {
+                                        if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+                                          setCustomColors(prev => ({
+                                            ...prev,
+                                            [pi.pi_id]: e.target.value,
+                                          }));
+                                        }
+                                      }}
+                                      className="w-full h-10 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50"
+                                      placeholder="#f97316"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Preview */}
+                              <div className="mb-4 flex items-center gap-3">
+                                <span className="text-xs text-white/60 font-light">Preview:</span>
+                                <MarkerShapeComponent
+                                  gradient={`from-[${customColors[pi.pi_id] || "#f97316"}] to-[${customColors[pi.pi_id] || "#f97316"}]`}
+                                  size="sm"
+                                />
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const colorHex = customColors[pi.pi_id] || "#f97316";
+                                    // Create a subtle gradient by darkening the color slightly for "to"
+                                    const gradient = `from-[${colorHex}] to-[${colorHex}]`;
+                                    
+                                    setOpenColorPickers(prev => ({ ...prev, [pi.pi_id]: false }));
+                                    try {
+                                      await updatePreference(pi.pi_id, { gradient });
+                                      setSuccess(`Color updated for ${pi.pi_id}`);
+                                      setTimeout(() => setSuccess(null), 2000);
+                                    } catch (err) {
+                                      console.error("Error updating color:", err);
+                                      setError("Failed to sync color to backend. Changes saved locally.");
+                                      setTimeout(() => setError(null), 3000);
+                                    }
+                                  }}
+                                  className="flex-1 h-9 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-white text-sm font-light transition-colors"
+                                >
+                                  Apply
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setOpenColorPickers(prev => ({ ...prev, [pi.pi_id]: false }))}
+                                  className="h-9 px-4 rounded-md border border-white/20 text-white/60 hover:text-white hover:bg-white/10 text-sm font-light transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </main>

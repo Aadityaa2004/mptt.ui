@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Droplets, Battery } from "lucide-react";
+import { Droplets, Battery, Thermometer } from "lucide-react";
 import type { Reading } from "@/types/admin";
 
 interface ReadingsChartProps {
@@ -137,6 +137,7 @@ export function ReadingsChart({ readings, timeRange }: ReadingsChartProps) {
     return null;
   }
 
+  const hasTemperature = chartData.some((d) => d.temperature !== null);
   const hasSapLevel = chartData.some((d) => d.sapLevel !== null);
   const hasBattery = chartData.some((d) => d.battery !== null);
 
@@ -150,7 +151,60 @@ export function ReadingsChart({ readings, timeRange }: ReadingsChartProps) {
   const xAxisInterval = getXAxisInterval();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      {/* Temperature Chart */}
+      {hasTemperature && (
+        <div className="border border-white/10 rounded-xl p-6 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm shadow-md">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-lg bg-white/10 border border-white/20">
+              <Thermometer className="h-6 w-6 text-orange-400" />
+            </div>
+            <div>
+              <h3 className="text-xl font-light text-white">Temperature</h3>
+              <p className="text-xs text-white/50 font-light">Current measurement</p>
+            </div>
+          </div>
+          <div className="w-full h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                key={`temperature-${timeRange}`}
+                data={chartData}
+                margin={{ top: 10, right: 20, left: 10, bottom: timeRange === "1h" ? 30 : 60 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                <XAxis
+                  dataKey="timeLabel"
+                  stroke="#ffffff50"
+                  style={{ fontSize: "11px" }}
+                  angle={timeRange === "1h" ? 0 : -45}
+                  textAnchor={timeRange === "1h" ? "middle" : "end"}
+                  height={timeRange === "1h" ? 30 : 60}
+                  interval={xAxisInterval}
+                />
+                <YAxis
+                  stroke="#ffffff50"
+                  style={{ fontSize: "12px" }}
+                  label={{ value: "°C", angle: -90, position: "insideLeft", style: { fill: "#ffffff70", fontSize: "12px" } }}
+                />
+                <Tooltip 
+                  content={<CustomTooltip unit="°C" />}
+                  cursor={{ stroke: "#f97316", strokeWidth: 1, strokeDasharray: "5 5" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="temperature"
+                  stroke="#f97316"
+                  strokeWidth={3}
+                  dot={false}
+                  connectNulls={false}
+                  activeDot={{ r: 5, fill: "#ea580c", stroke: "#fff", strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {/* Sap Level Chart */}
       {hasSapLevel && (
         <div className="border border-white/10 rounded-xl p-6 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm shadow-md">
