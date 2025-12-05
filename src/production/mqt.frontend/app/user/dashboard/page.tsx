@@ -6,7 +6,6 @@ import Navbar from "@/components/navbar/Navbar";
 import { LocationInput } from "@/components/weather/LocationInput";
 import { CurrentWeather } from "@/components/weather/CurrentWeather";
 import { usePiPreferences } from "@/hooks/usePiPreferences";
-import { tailwindToHex } from "@/lib/colorUtils";
 import dynamic from "next/dynamic";
 
 const DeviceMap = dynamic(
@@ -252,17 +251,15 @@ export default function UserDashboardPage() {
       setError(null);
       // Get the gradient preference for this PI (with default fallback)
       const piPreference = getPreference(deviceData.pi_id);
-      // Extract primary color from gradient for backend storage
-      const gradientMatch = piPreference?.gradient?.match(/from-([a-z]+-\d+)/);
-      const primaryColor = gradientMatch ? gradientMatch[1] : "orange-500";
-      const hexColor = tailwindToHex(primaryColor);
+      // Get color from preference (with default fallback)
+      const hexColor = piPreference?.color || "#f97316";
       
       const location = await deviceLocationService.addLocation({
         device_id: deviceData.device_id,
         pi_id: deviceData.pi_id,
         latitude: deviceData.latitude,
         longitude: deviceData.longitude,
-        color: hexColor, // Store primary color from gradient
+        color: hexColor,
       });
       // Reload all devices to ensure consistency
       await loadDevices();

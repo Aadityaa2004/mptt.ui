@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Device } from "@/types/device";
 import type { Pi, PiDevice } from "@/services/api/sensorService";
-import { usePiPreferences } from "@/hooks/usePiPreferences";
+import { usePiPreferences, colorToGradient } from "@/hooks/usePiPreferences";
 import { MarkerShapeComponent } from "./MarkerShape";
 
 interface DeviceMapProps {
@@ -329,7 +329,7 @@ export function DeviceMap({ devices, onDeviceAdd, onDeviceClick, center = [40.71
             >
               <div className="cursor-pointer">
                 <MarkerShapeComponent
-                  gradient={preference.gradient}
+                  gradient={colorToGradient(preference.color)}
                   size={markerSize}
                   isSelected={isSelected}
                 />

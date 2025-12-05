@@ -6,44 +6,10 @@ import Navbar from "@/components/navbar/Navbar";
 import { LocationInput } from "@/components/weather/LocationInput";
 import { weatherService } from "@/services/api/weatherService";
 import { sensorService, type Pi } from "@/services/api/sensorService";
-import { usePiPreferences } from "@/hooks/usePiPreferences";
+import { usePiPreferences, colorToGradient } from "@/hooks/usePiPreferences";
 import { MarkerShapeComponent } from "@/components/map/MarkerShape";
-import { tailwindToHex, hexToTailwind } from "@/lib/colorUtils";
 import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
 
-const AVAILABLE_COLORS = [
-  "orange-500",
-  "blue-500",
-  "green-500",
-  "purple-500",
-  "red-500",
-  "yellow-500",
-  "pink-500",
-  "cyan-500",
-  "indigo-500",
-  "teal-500",
-  "emerald-500",
-  "rose-500",
-  "amber-500",
-  "violet-500",
-  "sky-500",
-];
-
-// Predefined gradient combinations (no blue colors - blue is reserved for current location)
-const PREDEFINED_GRADIENTS = [
-  { gradient: "from-orange-500 to-red-500" },
-  { gradient: "from-green-500 to-emerald-500" },
-  { gradient: "from-purple-500 to-pink-500" },
-  { gradient: "from-red-500 to-orange-500" },
-  { gradient: "from-yellow-500 to-orange-500" },
-  { gradient: "from-pink-500 to-rose-500" },
-  { gradient: "from-indigo-500 to-purple-500" },
-  { gradient: "from-teal-500 to-cyan-500" },
-  { gradient: "from-violet-500 to-purple-500" },
-  { gradient: "from-emerald-500 to-green-500" },
-  { gradient: "from-rose-500 to-pink-500" },
-  { gradient: "from-amber-500 to-yellow-500" },
-];
 
 export default function SettingsPage() {
   const { user, isLoading } = useRequireAuth("user");
@@ -187,7 +153,7 @@ export default function SettingsPage() {
           <div className="border border-white/10 rounded-lg p-8 bg-gradient-to-br from-white/5 to-white/0 backdrop-blur-sm">
             <h2 className="text-2xl font-light mb-4">Map Marker Settings</h2>
             <p className="text-white/60 font-light text-sm mb-6">
-              Customize the gradient colors of markers for each Raspberry Pi unit on the map. This helps you visually group and identify your devices.
+              Customize the colors of markers for each Raspberry Pi unit on the map. This helps you visually group and identify your devices.
             </p>
 
             {isLoadingPis ? (
@@ -215,10 +181,10 @@ export default function SettingsPage() {
                         </h3>
                       </div>
 
-                      {/* Current Gradient Preview */}
+                      {/* Current Color Preview */}
                       <div className="flex items-center gap-2">
                         <MarkerShapeComponent
-                          gradient={preference.gradient}
+                          gradient={colorToGradient(preference.color)}
                           size="sm"
                         />
                       </div>
@@ -229,26 +195,11 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => {
                             setOpenColorPickers(prev => ({ ...prev, [pi.pi_id]: !prev[pi.pi_id] }));
-                            // Initialize custom color from current gradient if not set
+                            // Initialize custom color from current preference if not set
                             if (!customColors[pi.pi_id]) {
-                              // Check for custom hex colors first: from-[#f97316]
-                              const hexFromMatch = preference.gradient.match(/from-\[#([0-9A-Fa-f]{6})\]/);
-                              
-                              let colorHex = "#f97316";
-                              
-                              if (hexFromMatch) {
-                                colorHex = `#${hexFromMatch[1]}`;
-                              } else {
-                                // Try Tailwind class
-                                const fromMatch = preference.gradient.match(/from-([a-z]+-\d+)/);
-                                if (fromMatch) {
-                                  colorHex = tailwindToHex(fromMatch[1]);
-                                }
-                              }
-                              
                               setCustomColors(prev => ({
                                 ...prev,
-                                [pi.pi_id]: colorHex,
+                                [pi.pi_id]: preference.color || "#f97316",
                               }));
                             }
                           }}
@@ -320,12 +271,10 @@ export default function SettingsPage() {
                                   type="button"
                                   onClick={async () => {
                                     const colorHex = customColors[pi.pi_id] || "#f97316";
-                                    // Create a subtle gradient by darkening the color slightly for "to"
-                                    const gradient = `from-[${colorHex}] to-[${colorHex}]`;
                                     
                                     setOpenColorPickers(prev => ({ ...prev, [pi.pi_id]: false }));
                                     try {
-                                      await updatePreference(pi.pi_id, { gradient });
+                                      await updatePreference(pi.pi_id, { color: colorHex });
                                       setSuccess(`Color updated for ${pi.pi_id}`);
                                       setTimeout(() => setSuccess(null), 2000);
                                     } catch (err) {
